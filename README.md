@@ -9,7 +9,7 @@
 
 - 🌱 I’m currently learning **Python, Gitops**
 
-- 📝 I regularly write articles on [gagofure.hashnode.com](gagofure.hashnode.com)
+- 📝 I regularly write articles on [blog.gagofure.com](gagofure.hashnode.com)
 
 - 💬 Ask me about **Azure, Devops, Jenkin, containers**
 
