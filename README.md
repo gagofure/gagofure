@@ -86,7 +86,7 @@
   <a href="https://dev.to/@gagofure" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/devto.svg" alt="@gagofure" height="30" width="40" /></a>
   <a href="https://x.com/gagofure" target="blank"><img align="center" src="https://cdn.simpleicons.org/x/white" alt="gagofure" height="28" width="28" /></a>
   <a href="https://linkedin.com/in/gagofure" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="gagofure" height="30" width="40" /></a>
-  <a href="https://stackoverflow.com/users/gagofure" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/stack-overflow.svg" alt="gagofure" height="30" width="40" /></a>
+  <a href="https://stackoverflow.com/users/11471794/gagofure" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/stack-overflow.svg" alt="gagofure" height="30" width="40" /></a>
   <a href="https://hashnode.com/@gagofure" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/hashnode.svg" alt="@gagofure" height="30" width="40" /></a>
 </p>
 
