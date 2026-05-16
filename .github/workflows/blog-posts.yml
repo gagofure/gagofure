@@ -15,59 +15,97 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch latest posts from Hashnode GraphQL API
+      - name: Fetch posts from Hashnode and update README
         run: |
-          curl -s -X POST https://gql.hashnode.com/ \
-            -H "Content-Type: application/json" \
-            -d '{
-              "query": "query { publication(host: \"blog.gagofure.com\") { posts(first: 5) { edges { node { title brief url publishedAt } } } } }"
-            }' > response.json
-          echo "API Response:"
-          cat response.json
-
-      - name: Update README with latest posts
-        run: |
-          python3 << 'EOF'
+          python3 << 'PYEOF'
           import json
           import re
+          import urllib.request
+          import sys
           from datetime import datetime
 
-          with open('response.json') as f:
-              data = json.load(f)
+          # ---- Query Hashnode GraphQL API ----
+          query = {
+              "query": """
+              query Publication {
+                publication(host: "blog.gagofure.com") {
+                  posts(first: 5) {
+                    edges {
+                      node {
+                        title
+                        brief
+                        url
+                        publishedAt
+                      }
+                    }
+                  }
+                }
+              }
+              """
+          }
 
-          posts = data.get('data', {}).get('publication', {}).get('posts', {}).get('edges', [])
+          req = urllib.request.Request(
+              "https://gql.hashnode.com/",
+              data=json.dumps(query).encode("utf-8"),
+              headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "github-actions-blog-fetcher/1.0",
+              },
+              method="POST",
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  raw = resp.read().decode("utf-8")
+                  print(f"HTTP Status: {resp.status}")
+                  print(f"Response body:\n{raw}\n")
+                  data = json.loads(raw)
+          except Exception as e:
+              print(f"ERROR calling Hashnode API: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          # ---- Extract posts ----
+          publication = data.get("data", {}).get("publication")
+          if publication is None:
+              print("ERROR: Publication not found. Check the host parameter.", file=sys.stderr)
+              print(json.dumps(data, indent=2))
+              sys.exit(1)
+
+          posts = publication.get("posts", {}).get("edges", [])
+          print(f"Found {len(posts)} post(s)")
 
           if not posts:
-              print("No posts found or API error")
-              print(json.dumps(data, indent=2))
               markdown_content = "_No blog posts yet — check back soon!_"
           else:
               lines = []
               for post in posts:
-                  node = post['node']
-                  title = node['title']
-                  url = node['url']
-                  date_str = node.get('publishedAt', '')
+                  node = post["node"]
+                  title = node["title"]
+                  url = node["url"]
+                  date_str = node.get("publishedAt", "")
                   try:
-                      date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                      formatted_date = date_obj.strftime('%b %d, %Y')
+                      date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                      formatted_date = date_obj.strftime("%b %d, %Y")
                       lines.append(f"- [{title}]({url}) — _{formatted_date}_")
                   except Exception:
                       lines.append(f"- [{title}]({url})")
               markdown_content = "\n".join(lines)
 
-          with open('README.md', 'r') as f:
+          # ---- Update README ----
+          with open("README.md", "r", encoding="utf-8") as f:
               readme = f.read()
 
-          pattern = r'(<!-- BLOG-POST-LIST:START -->)(.*?)(<!-- BLOG-POST-LIST:END -->)'
-          replacement = f'\\1\n{markdown_content}\n\\3'
+          pattern = r"(<!-- BLOG-POST-LIST:START -->)(.*?)(<!-- BLOG-POST-LIST:END -->)"
+          replacement = f"\\1\n{markdown_content}\n\\3"
           new_readme = re.sub(pattern, replacement, readme, flags=re.DOTALL)
 
-          with open('README.md', 'w') as f:
-              f.write(new_readme)
-
-          print("README updated successfully")
-          EOF
+          if new_readme == readme:
+              print("No changes to README content")
+          else:
+              with open("README.md", "w", encoding="utf-8") as f:
+                  f.write(new_readme)
+              print("README updated successfully")
+          PYEOF
 
       - name: Commit and push changes
         run: |
