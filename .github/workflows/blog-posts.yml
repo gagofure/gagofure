@@ -2,13 +2,11 @@ name: Latest Blog Post Workflow
 
 on:
   schedule:
-    # Runs every 6 hours (less aggressive to avoid rate limits)
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
-  update-readme-with-blog:
-    name: Update README with latest blog posts
+  update-readme:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,15 +15,68 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Pull latest blog posts from Hashnode
-        uses: gautamkrishnar/blog-post-workflow@v1
-        with:
-          # Use Hashnode subdomain (more reliable than custom domain - avoids Cloudflare rate limits)
-          feed_list: "https://gagofure.hashnode.dev/rss.xml"
-          max_post_count: 5
-          comment_tag_name: "BLOG-POST-LIST"
-          # Retry on failure (helps with intermittent 429 errors)
-          retry_count: 5
-          retry_wait_time: 30
-          # Custom user agent (some sites block default GitHub Actions UA)
-          user_agent: "Mozilla/5.0 (compatible; BlogPostWorkflow/1.0; +https://github.com/gautamkrishnar/blog-post-workflow)"
+      - name: Fetch latest posts from Hashnode GraphQL API
+        run: |
+          curl -s -X POST https://gql.hashnode.com/ \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "query { publication(host: \"blog.gagofure.com\") { posts(first: 5) { edges { node { title brief url publishedAt } } } } }"
+            }' > response.json
+          echo "API Response:"
+          cat response.json
+
+      - name: Update README with latest posts
+        run: |
+          python3 << 'EOF'
+          import json
+          import re
+          from datetime import datetime
+
+          with open('response.json') as f:
+              data = json.load(f)
+
+          posts = data.get('data', {}).get('publication', {}).get('posts', {}).get('edges', [])
+
+          if not posts:
+              print("No posts found or API error")
+              print(json.dumps(data, indent=2))
+              markdown_content = "_No blog posts yet — check back soon!_"
+          else:
+              lines = []
+              for post in posts:
+                  node = post['node']
+                  title = node['title']
+                  url = node['url']
+                  date_str = node.get('publishedAt', '')
+                  try:
+                      date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                      formatted_date = date_obj.strftime('%b %d, %Y')
+                      lines.append(f"- [{title}]({url}) — _{formatted_date}_")
+                  except Exception:
+                      lines.append(f"- [{title}]({url})")
+              markdown_content = "\n".join(lines)
+
+          with open('README.md', 'r') as f:
+              readme = f.read()
+
+          pattern = r'(<!-- BLOG-POST-LIST:START -->)(.*?)(<!-- BLOG-POST-LIST:END -->)'
+          replacement = f'\\1\n{markdown_content}\n\\3'
+          new_readme = re.sub(pattern, replacement, readme, flags=re.DOTALL)
+
+          with open('README.md', 'w') as f:
+              f.write(new_readme)
+
+          print("README updated successfully")
+          EOF
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update README with latest blog posts"
+            git push
+          fi
