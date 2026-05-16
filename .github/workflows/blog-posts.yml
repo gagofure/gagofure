@@ -2,9 +2,8 @@ name: Latest Blog Post Workflow
 
 on:
   schedule:
-    # Runs every 2 hours
-    - cron: '0 */2 * * *'
-  # Allow manual trigger
+    # Runs every 6 hours (less aggressive to avoid rate limits)
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,11 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Pull latest blog posts
+      - name: Pull latest blog posts from Hashnode
         uses: gautamkrishnar/blog-post-workflow@v1
         with:
-          # Your Hashnode RSS feed
-          feed_list: "https://blog.gagofure.com/rss.xml"
+          # Use Hashnode subdomain (more reliable than custom domain - avoids Cloudflare rate limits)
+          feed_list: "https://gagofure.hashnode.dev/rss.xml"
           max_post_count: 5
-          # Comment markers in your README.md
           comment_tag_name: "BLOG-POST-LIST"
+          # Retry on failure (helps with intermittent 429 errors)
+          retry_count: 5
+          retry_wait_time: 30
+          # Custom user agent (some sites block default GitHub Actions UA)
+          user_agent: "Mozilla/5.0 (compatible; BlogPostWorkflow/1.0; +https://github.com/gautamkrishnar/blog-post-workflow)"
